@@ -1,0 +1,153 @@
+// -----------------------------------------------------------------------------
+// Compute Shader: SoundPropagation.hlsl
+// 
+// Real-world domain: 8 km × 8 km
+// Resolution: 8000 × 8000
+//  -> 1 pixel = 1 meter
+// 
+// Speed of sound: 343 m/s (approx. at 20°C)
+// 
+// Choose dt <= ~ 0.001 s (1 ms) to satisfy CFL stability.
+// -----------------------------------------------------------------------------
+
+#pragma kernel CSMain
+
+// -----------------------------------------------------------------------------
+// Resource Bindings
+// -----------------------------------------------------------------------------
+RWTexture2D<float2> CurrentField;    // (pressure/displacement, velocity)
+RWTexture2D<float2> NextField;
+StructuredBuffer<float> ExplosionSamplingBuffer;
+int ExplosionSamplingBufferLength;
+
+// -----------------------------------------------------------------------------
+// Simulation Parameters (set from CPU side)
+// -----------------------------------------------------------------------------
+int FrameIndex;             // Current frame number
+int EmissionFrameIndex;     // Current frame number
+bool Emit;                  // Whether we are injecting a source
+
+// -----------------------------------------------------------------------------
+// Domain & Physical Constants
+// -----------------------------------------------------------------------------
+#define SOUND_SPEED        343.0f           // m/s
+#define DAMPING            1                // velocity damping factor
+#define L                  1                // boundary offset if needed
+#define MAGNITUDE          255              // Emission magnitude
+
+int SIM_SIZE_X;
+int SIM_SIZE_Y;
+int SIM_SIZE_METERS_X;
+int SIM_SIZE_METERS_Y;
+float DT;
+
+// -----------------------------------------------------------------------------
+// Compute Laplacian in real-world units
+//   We assume 1 pixel = 1 meter in both X and Y
+//   => dx = 1 m, dy = 1 m
+// -----------------------------------------------------------------------------
+float Laplacian(uint2 pos)
+{
+    float center = CurrentField[pos].x;
+    float up     = CurrentField[pos + uint2(0, 1)].x;
+    float down   = CurrentField[pos - uint2(0, 1)].x;
+    float left   = CurrentField[pos - uint2(1, 0)].x;
+    float right  = CurrentField[pos + uint2(1, 0)].x;
+
+    // Discrete 2D Laplacian
+    float lap = up + down + left + right - 4.0 * center;
+    
+    // Since 1 pixel = 1 meter, Δx = Δy = 1.0m => Laplacian / (1.0^2) = lap
+    float dx = 1.0f; 
+    return lap / (dx * dx);
+}
+
+float4 EmitterPosition;
+// -----------------------------------------------------------------------------
+// Optional Emission/Source Term
+// -----------------------------------------------------------------------------
+float Emission(uint2 pos)
+{
+    if (Emit)
+    {
+        float2 R = SIM_SIZE_X;
+        float2 diff = pos - EmitterPosition.xy * R;
+        float distanceSq = dot(diff, diff);
+    
+        // Gaussian distribution centered at the middle of the grid
+        float alpha = 0.5; // Spread factor for explosion
+        return MAGNITUDE * exp(-alpha * distanceSq);
+    }
+    return 0;
+}
+
+// -----------------------------------------------------------------------------
+// Update Step
+//   field.x = displacement/pressure
+//   field.y = velocity
+// -----------------------------------------------------------------------------
+float2 NewField(uint2 pos)
+{
+    float2 field = CurrentField[pos];
+    float force = Emission(pos);
+
+    // Velocity update
+    //   v_{n+1} = DAMPING * v_n + dt * ( c^2 * Laplacian + force )
+    field.y = DAMPING * field.y + SOUND_SPEED * SOUND_SPEED * Laplacian(pos) * DT + force;
+    
+    // Displacement/Pressure update
+    //   p_{n+1} = p_n + dt * v_{n+1}
+    field.x += DT * field.y;
+
+    return field;
+}
+
+// -----------------------------------------------------------------------------
+// Simple Absorbing Boundary
+// -----------------------------------------------------------------------------
+float2 NewAbsorbed(uint2 pos, int2 neighborOffset)
+{
+    float2 field       = CurrentField[pos];
+    float  neighbor    = CurrentField[pos + neighborOffset].x;
+    float  newNeighbor = NewField(pos + neighborOffset).x;
+
+    // Example of an "absorbing" style boundary
+    float uS = DT;
+    field.x  = neighbor + (newNeighbor - field.x) * (uS - 1.0f) / (uS + 1.0f);
+
+    return field;
+}
+
+// -----------------------------------------------------------------------------
+// Compute Shader Entry
+// -----------------------------------------------------------------------------
+[numthreads(8, 8, 1)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+    uint2 pos = id.xy;
+    
+    // Check bounds
+    if (pos.x >= SIM_SIZE_X || pos.y >= SIM_SIZE_Y)
+        return;
+
+    float2 field;
+
+    // Boundary handling
+    if (pos.x <= L)
+        field = NewAbsorbed(pos, int2(1, 0));
+    else if (pos.x >= SIM_SIZE_X - 1 - L)
+        field = NewAbsorbed(pos, int2(-1, 0));
+    else if (pos.y <= L)
+        field = NewAbsorbed(pos, int2(0, 1));
+    else if (pos.y >= SIM_SIZE_Y - 1 - L)
+        field = NewAbsorbed(pos, int2(0, -1));
+    else
+        field = NewField(pos);
+
+    // Initial condition at t=0
+    if (FrameIndex == 0)
+        field = float2(0.0f, 0.0f);
+
+    // Write result to NextField
+    NextField[pos] = field;
+}

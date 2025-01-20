@@ -1,0 +1,72 @@
+#pragma kernel CSMain
+#pragma enable_d3d11_debug_symbols
+
+Texture2D<float2> SoundField;
+RWStructuredBuffer<float> SensorOutput0;
+RWStructuredBuffer<float> SensorOutput1;
+RWStructuredBuffer<float> SensorOutput2;
+RWStructuredBuffer<float> SensorOutput3;
+RWStructuredBuffer<float> SensorOutput4;
+RWStructuredBuffer<float> SensorOutput5;
+// RWStructuredBuffer<float> SensorOutput6;
+// RWStructuredBuffer<float> SensorOutput7;
+// RWStructuredBuffer<float> SensorOutput8;
+
+RWStructuredBuffer<int> SensorTriggeringTime;
+
+float4 MicrophonePositions[6];
+int CurFrameIndex;
+
+[numthreads(6,1,1)]
+void CSMain(uint3 id : SV_DispatchThreadID)
+{
+    /*SensorOutput0[CurFrameIndex] = sin(CurFrameIndex * 0.01);
+    SensorOutput1[CurFrameIndex] = sin(CurFrameIndex * 0.01);
+    SensorOutput2[CurFrameIndex] = sin(CurFrameIndex * 0.01);*/
+    
+    switch (id.x)
+    {
+    case 0:
+        SensorOutput0[CurFrameIndex] = SoundField[uint2(MicrophonePositions[0].xy)].r;
+        break;
+    case 1:
+        SensorOutput1[CurFrameIndex] = SoundField[uint2(MicrophonePositions[1].xy)].r;
+        break;
+    case 2:
+        SensorOutput2[CurFrameIndex] = SoundField[uint2(MicrophonePositions[2].xy)].r;
+        break;
+    case 3:
+        SensorOutput3[CurFrameIndex] = SoundField[uint2(MicrophonePositions[3].xy)].r;
+        break;
+    case 4:
+        SensorOutput4[CurFrameIndex] = SoundField[uint2(MicrophonePositions[4].xy)].r;
+        break;
+    case 5:
+        SensorOutput5[CurFrameIndex] = SoundField[uint2(MicrophonePositions[5].xy)].r;
+        break;
+    // case 6:
+    //     SensorOutput6[CurFrameIndex] = SoundField[uint2(MicrophonePositions[6].xy)].r;
+    //     break;
+    // case 7:
+    //     SensorOutput7[CurFrameIndex] = SoundField[uint2(MicrophonePositions[7].xy)].r;
+    //     break;
+    // case 8:
+    //     SensorOutput8[CurFrameIndex] = SoundField[uint2(MicrophonePositions[8].xy)].r;
+    //     break;
+    default:
+        break;
+    }
+
+    if (CurFrameIndex == 0)
+        SensorTriggeringTime[id.x] = -1;
+    int FrameTriggered = SensorTriggeringTime[id.x];
+    if (FrameTriggered == -1)
+    {
+        float2 MicrophonePosition = MicrophonePositions[id.x].xy;
+        float SoundValue = SoundField[uint2(MicrophonePosition)].r;
+        if (SoundValue > 0.01)
+        {
+            SensorTriggeringTime[id.x] = CurFrameIndex;
+        }
+    }
+}
