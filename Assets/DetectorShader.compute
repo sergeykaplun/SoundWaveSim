@@ -8,9 +8,6 @@ RWStructuredBuffer<float> SensorOutput2;
 RWStructuredBuffer<float> SensorOutput3;
 RWStructuredBuffer<float> SensorOutput4;
 RWStructuredBuffer<float> SensorOutput5;
-// RWStructuredBuffer<float> SensorOutput6;
-// RWStructuredBuffer<float> SensorOutput7;
-// RWStructuredBuffer<float> SensorOutput8;
 
 RWStructuredBuffer<int> SensorTriggeringTime;
 
@@ -20,10 +17,6 @@ int CurFrameIndex;
 [numthreads(6,1,1)]
 void CSMain(uint3 id : SV_DispatchThreadID)
 {
-    /*SensorOutput0[CurFrameIndex] = sin(CurFrameIndex * 0.01);
-    SensorOutput1[CurFrameIndex] = sin(CurFrameIndex * 0.01);
-    SensorOutput2[CurFrameIndex] = sin(CurFrameIndex * 0.01);*/
-    
     switch (id.x)
     {
     case 0:
@@ -44,15 +37,6 @@ void CSMain(uint3 id : SV_DispatchThreadID)
     case 5:
         SensorOutput5[CurFrameIndex] = SoundField[uint2(MicrophonePositions[5].xy)].r;
         break;
-    // case 6:
-    //     SensorOutput6[CurFrameIndex] = SoundField[uint2(MicrophonePositions[6].xy)].r;
-    //     break;
-    // case 7:
-    //     SensorOutput7[CurFrameIndex] = SoundField[uint2(MicrophonePositions[7].xy)].r;
-    //     break;
-    // case 8:
-    //     SensorOutput8[CurFrameIndex] = SoundField[uint2(MicrophonePositions[8].xy)].r;
-    //     break;
     default:
         break;
     }

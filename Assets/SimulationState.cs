@@ -3,22 +3,23 @@ using UnityEngine;
 public class SimulationState
 {
     public static int SAMPLE_RATE = 1000;
-    public static int SAMPLING_DURATION = 40;
+    public static int SAMPLING_DURATION = 60;
     
     public static int GRID_RES = 16000;
-    public static int SOUND_FIELD_SIZE = 16000;
-    public static Vector4 emitterPosition = new(0.15f, 0.5f, 0.0f, 0.0f);
+    public static int SOUND_FIELD_SIZE = 8000;
+
+    public static float DX = ((float)GRID_RES)/SOUND_FIELD_SIZE;
+    public static float DT = DX / SAMPLE_RATE;
+    
+    public static Vector4 emitterPosition = new(0.5f, 0.5f, 0.0f, 0.0f);
     public static Vector4[] mikesPositions =
     {
-        new(0.85f, 0.5f, 0.0f, 0.0f),
-        new(0.85f, 0.5025f, 0.0f, 0.0f),
-        new(0.85f, 0.5050f, 0.0f, 0.0f),
-        new(0.85f, 0.75f, 0.0f, 0.0f),
-        new(0.85f, 0.80f, 0.0f, 0.0f),
-        new(0.85f, 0.85f, 0.0f, 0.0f),
-        /*new(0.5f, 0.80f, 0.0f, 0.0f),
+        new(0.5f, 0.75f, 0.0f, 0.0f),
+        new(0.5f, 0.80f, 0.0f, 0.0f),
         new(0.5f, 0.85f, 0.0f, 0.0f),
-        new(0.5f, 0.90f, 0.0f, 0.0f)*/
+        new(0.5f, 0.9f, 0.0f, 0.0f),
+        new(0.5f, 0.95f, 0.0f, 0.0f),
+        new(0.5f, 1.0f, 0.0f, 0.0f),
     };
 
     public static Vector4[] GetMikesPositionsInPixels()

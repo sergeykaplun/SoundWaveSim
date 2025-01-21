@@ -42,12 +42,9 @@ Shader "Unlit/WaveVisualisationShader"
                 float2 field = tex2D(_CurrentField, i.uv).rg;
 
                 float amplitude = field.x;
-                float3 color = 25. * amplitude;
-
-                // float velocity = field.y;
-                // float2 f = float2(amplitude, velocity * 2.0);
-                // float3 color = 0.25 * dot(f, f);
-
+                float3 backgroundColor = float3(0.9, 0.9, 0.9);
+                float3 waveColor = float3(0.6, 0.85, 1.0);
+                float3 color = lerp(backgroundColor, waveColor, amplitude * 25.0);
                 return float4(color, 1);
             }
             ENDCG

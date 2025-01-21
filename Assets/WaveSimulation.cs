@@ -36,25 +36,18 @@ public class WaveSimulation : MonoBehaviour
         kernelHandle = computeShader.FindKernel("CSMain");
         computeShader.GetKernelThreadGroupSizes(kernelHandle, out threadGroupSizeX, out threadGroupSizeY, out threadGroupSizeZ);
 
-        // Set initial parameters
-        // computeShader.SetFloat("dt", 0.16f);
-        
         // Set initial textures
         computeShader.SetTexture(kernelHandle, "CurrentField", currentField);
         computeShader.SetTexture(kernelHandle, "NextField", nextField); 
         
-        // computeShader.SetBuffer(kernelHandle, "ExplosionSamplingBuffer", explosionSamplingBuffer);
-        // computeShader.SetInt("ExplosionSamplingBufferLength", monoSampleData.Length);
-
          renderMaterial = GetComponent<MeshRenderer>().material;
         // Set the texture on the material
         renderMaterial.SetTexture("_CurrentField", currentField);
 
-        computeShader.SetInt("SIM_SIZE_X", SimulationState.GRID_RES);
-        computeShader.SetInt("SIM_SIZE_Y", SimulationState.GRID_RES);
-        computeShader.SetInt("SIM_SIZE_METERS_X", SimulationState.SOUND_FIELD_SIZE);
-        computeShader.SetInt("SIM_SIZE_METERS_Y", SimulationState.SOUND_FIELD_SIZE);
-        computeShader.SetFloat("DT", 2f/SimulationState.SAMPLE_RATE);
+        computeShader.SetInt("SIM_RES_X", SimulationState.GRID_RES);
+        computeShader.SetInt("SIM_RES_Y", SimulationState.GRID_RES);
+        computeShader.SetFloat("DX", SimulationState.DX);
+        computeShader.SetFloat("DT", SimulationState.DT);
         
         FrameIndex = 0;
         fps_frameTimes = new float[fps_frameBufferSize];
@@ -83,23 +76,6 @@ public class WaveSimulation : MonoBehaviour
         computeShader.SetBool("Emit", Emitting);
         computeShader.SetVector("EmitterPosition", SimulationState.emitterPosition);
 
-        /*bool emitting = (EmissionFrameIndex > 0 && EmissionFrameIndex < monoSampleData.Length); //Input.GetKeyDown(KeyCode.Space) && LastEmittedTime > 1f;
-        if (!emitting && Input.GetKeyDown(KeyCode.Space))
-        {
-            emitting = true;
-            EmissionFrameIndex = 0;
-        }
-        computeShader.SetInt("FrameIndex", FrameIndex);
-        computeShader.SetInt("EmissionFrameIndex", EmissionFrameIndex);
-        computeShader.SetBool("Emit", emitting);*/
-        
-        // var emitterPos = Constants.GetEmitterPosition();
-        // computeShader.SetInts("EmitterPosition", (int) emitterPos.x, (int) emitterPos.y);
-        //
-        // Dispatch compute shader
-        
-        // int groupsX = Mathf.CeilToInt(SimulationState.SOUND_FIELD_SIZE / (float)threadGroupSizeX);
-        // int groupsY = Mathf.CeilToInt(SimulationState.SOUND_FIELD_SIZE / (float)threadGroupSizeY);
         int groupsX = Mathf.CeilToInt(SimulationState.GRID_RES / (float)threadGroupSizeX);
         int groupsY = Mathf.CeilToInt(SimulationState.GRID_RES / (float)threadGroupSizeY);
         computeShader.Dispatch(kernelHandle, groupsX, groupsY, 1);
@@ -114,14 +90,6 @@ public class WaveSimulation : MonoBehaviour
         // Update texture on material
         renderMaterial.SetTexture("_CurrentField", currentField);
 
-        /*if (emitting)
-        {
-            if (++EmissionFrameIndex >= monoSampleData.Length)
-            {
-                EmissionFrameIndex = -1;
-            }
-        }*/
-        
         FrameIndex++;
         
         fps_frameTimes[FrameIndex % fps_frameBufferSize] = Time.deltaTime;

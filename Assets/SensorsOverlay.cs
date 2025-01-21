@@ -23,8 +23,6 @@ public class SensorsOverlay : MonoBehaviour
         QualitySettings.vSyncCount = 0;
         Application.targetFrameRate = -1;
         
-        
-        //var dataSize = /*sizeof(float) * */44100 * 60;
         var dataSize = SimulationState.SAMPLE_RATE * SimulationState.SAMPLING_DURATION; //10sec * 1kHz
         float[] zeroData = new float[dataSize];
         
@@ -35,15 +33,6 @@ public class SensorsOverlay : MonoBehaviour
             _sensorBuffer[i].name = "SensorOutput" + i;
             _sensorBuffer[i].SetData(zeroData);
         }
-        // _sensorBuffer[0] = new ComputeBuffer(dataSize, sizeof(float), ComputeBufferType.Structured, ComputeBufferMode.Immutable);
-        // _sensorBuffer[0].name = "SensorOutput0";
-        // _sensorBuffer[0].SetData(zeroData);
-        // _sensorBuffer[1] = new ComputeBuffer(dataSize, sizeof(float), ComputeBufferType.Structured, ComputeBufferMode.Immutable);
-        // _sensorBuffer[1].SetData(zeroData);
-        // _sensorBuffer[1].name = "SensorOutput1";
-        // _sensorBuffer[2] = new ComputeBuffer(dataSize, sizeof(float), ComputeBufferType.Structured, ComputeBufferMode.Immutable);
-        // _sensorBuffer[2].SetData(zeroData);
-        // _sensorBuffer[2].name = "SensorOutput2";
         
         _TriggerTimeBuffer = new ComputeBuffer(SimulationState.mikesPositions.Length, sizeof(int), ComputeBufferType.Structured, ComputeBufferMode.Immutable);
         var data = Enumerable.Repeat(-1, SimulationState.mikesPositions.Length).ToArray();
@@ -54,9 +43,6 @@ public class SensorsOverlay : MonoBehaviour
         {
             detectorShader.SetBuffer(0, "SensorOutput" + i, _sensorBuffer[i]);
         }
-        // detectorShader.SetBuffer(0, "SensorOutput0", _sensorBuffer[0]);
-        // detectorShader.SetBuffer(0, "SensorOutput1", _sensorBuffer[1]);
-        // detectorShader.SetBuffer(0, "SensorOutput2", _sensorBuffer[2]);
         detectorShader.SetBuffer(0, "SensorTriggeringTime", _TriggerTimeBuffer);
         
         material = GetComponent<Renderer>().material;
@@ -66,9 +52,6 @@ public class SensorsOverlay : MonoBehaviour
         {
             material.SetBuffer("SensorOutput" + i, _sensorBuffer[i]);
         }
-        // material.SetBuffer("SensorOutput0", _sensorBuffer[0]);
-        // material.SetBuffer("SensorOutput1", _sensorBuffer[1]);
-        // material.SetBuffer("SensorOutput2", _sensorBuffer[2]);
         
         CurrentFrameIndex = 0;
         mainCamera = Camera.main;
@@ -102,8 +85,6 @@ public class SensorsOverlay : MonoBehaviour
                 explosionSampleData[i] = sampleData[i * channels + 0];
             }
         }
-        // explosionSamplingBuffer = new ComputeBuffer(monoSampleData.Length, sizeof(float));
-        // explosionSamplingBuffer.SetData(monoSampleData);
     }
 
     private int CurrentFrameIndex;
@@ -144,8 +125,6 @@ public class SensorsOverlay : MonoBehaviour
                             draggingItem = i; 
                         }
                     }
-                    // selectedCircleUV = uv;
-                    // isDragging = true;
                 }
             }
         }
@@ -245,24 +224,15 @@ public class SensorsOverlay : MonoBehaviour
                 Assert.IsTrue(false, "Folder already exists");
             }
             
-            // int sampleRate = SimulationState.SAMPLE_RATE;
-            // int sampleCount = SimulationState.SAMPLE_RATE * SimulationState.SAMPLING_DURATION;
             int channels = 1;
-            
-            //Enumerable.Range(1, SimulationState.mikesPositions.Length).Map(i => i.ToString()).ToArray();
             var filenames = Enumerable.Range(1, SimulationState.mikesPositions.Length).Select(i => i.ToString() + ".wav").ToArray();
-            
-            // var filenames = new[] {"1.wav", "2.wav", "3.wav"};
-            // Debug.Log($"Saving file to: {folderName}");
             
             for (int i = 0; i < filenames.Length; i++)
             {
                 string filename = filenames[i];
                 float[] data = new float[SimulationState.SAMPLE_RATE * SimulationState.SAMPLING_DURATION];
                 _sensorBuffer[i].GetData(data);
-                // float min = data.Min();
-                // float max = data.Max();
-                // Debug.Log($"Min: {min}, Max: {max}");
+
                 using (FileStream fileStream = new FileStream(folderPath + "/" + filename, FileMode.Create))
                 {
                     using (BinaryWriter writer = new BinaryWriter(fileStream))
@@ -301,8 +271,12 @@ public class SensorsOverlay : MonoBehaviour
                 }
             }
 
-            {
-                int[] triggeringFrames = GetTriggeringFrames();
+            int[] triggeringFrames = GetTriggeringFrames();
+            int framesLag = triggeringFrames[1] - triggeringFrames[0];
+            float distanceBetweenMikes = Vector4.Distance(SimulationState.mikesPositions[0], SimulationState.mikesPositions[1]) * SimulationState.SOUND_FIELD_SIZE;
+            Debug.Log("Distance between mikes: " + distanceBetweenMikes);
+            Debug.Log("Frames lag: " + framesLag);
+           {
                 for (int i = 0; i < triggeringFrames.Length; i++)
                 {
                     triggeringFrames[i] = (int)(triggeringFrames[i] * ((float)explosionSampleRate)/SimulationState.SAMPLE_RATE);
@@ -314,10 +288,8 @@ public class SensorsOverlay : MonoBehaviour
                 int maxTriggeringFrame = triggeringFrames.Max();
                 
                 int sampleCount = explosionSampleData.Length + maxTriggeringFrame;
-                // int explsionByteRate = explosionSampleRate * sizeof(float);
                 int explsionByteRate = explosionSampleRate * 2;
                 
-                // filenames = new[] {"1_mock.wav", "2_mock.wav", "3_mock.wav"};
                 var mock_filenames = Enumerable.Range(1, SimulationState.mikesPositions.Length).Select(i => i.ToString() + "_mock.wav").ToArray();
                 for (int i = 0; i < mock_filenames.Length; i++)
                 {
@@ -370,13 +342,6 @@ public class SensorsOverlay : MonoBehaviour
                     ""sampleRate"": {16}
                 }}";
             
-            /*var jsonDescriptorPattern = @"{{
-                    ""EmitterPosition"": [{0}, {1}],
-                    ""MikesPositions"": [[{2}, {3}], [{4}, {5}], [{6}, {7}]],
-                    ""SimulationResolution"": {8},
-                    ""SimulationSpace"": {9},
-                    ""sampleRate"": {10}
-                }}";*/
             string jsonDescriptor = string.Format(jsonDescriptorPattern, 
                 SimulationState.emitterPosition.x, SimulationState.emitterPosition.y,
                 SimulationState.mikesPositions[0].x, SimulationState.mikesPositions[0].y,
